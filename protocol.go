@@ -122,7 +122,9 @@ func SetFutureResult(future interface{}, cmd *Command, r Response) {
 		case BULK:
 			future.(FutureBytes).set(r.GetBulkData())
 		case MULTI_BULK:
-			future.(FutureBytesArray).set(r.GetMultiBulkData())
+            if r,ok := r.GetMultiBulkData().([][]byte);ok{
+			    future.(FutureBytesArray).set(r)
+            }
 		case NUMBER:
 			future.(FutureInt64).set(r.GetNumberValue())
 		case STATUS:
@@ -149,7 +151,7 @@ func sendRequest(w io.Writer, data []byte) {
 		panic(newSystemErrorf("<BUG> %s() - nil Writer", loginfo))
 	}
 
-	n, e := w.Write(data)
+    n, e := w.Write(data)
 	if e != nil {
 		panic(newSystemErrorf("%s() - connection Write wrote %d bytes only.", loginfo, n))
 	}
@@ -174,7 +176,8 @@ type Response interface {
 	GetNumberValue() int64
 	GetStringValue() string
 	GetBulkData() []byte
-	GetMultiBulkData() [][]byte
+	GetMultiBulkData() interface{}
+	//GetMultiBulkData() [][]byte
 }
 type _response struct {
 	isError       bool
@@ -183,7 +186,8 @@ type _response struct {
 	numval        int64
 	stringval     string
 	bulkdata      []byte
-	multibulkdata [][]byte
+	multibulkdata interface{} //for multibulkdata can be nested
+	//multibulkdata [][]byte
 }
 
 func (r *_response) IsError() bool          { return r.isError }
@@ -192,7 +196,7 @@ func (r *_response) GetBooleanValue() bool  { return r.boolval }
 func (r *_response) GetNumberValue() int64  { return r.numval }
 func (r *_response) GetStringValue() string { return r.stringval }
 func (r *_response) GetBulkData() []byte    { return r.bulkdata }
-func (r *_response) GetMultiBulkData() [][]byte {
+func (r *_response) GetMultiBulkData() interface{} {
 	return r.multibulkdata
 }
 
@@ -207,7 +211,6 @@ func (r *_response) GetMultiBulkData() [][]byte {
 //
 // Any errors (whether runtime or bugs) are returned as redis.Error.
 func GetResponse(reader *bufio.Reader, cmd *Command) (resp Response, err Error) {
-
 	defer func() {
 		err = onRecover(recover(), "GetResponse")
 	}()
@@ -219,7 +222,6 @@ func GetResponse(reader *bufio.Reader, cmd *Command) (resp Response, err Error) 
 		resp = &_response{msg: string(buf[1:]), isError: true}
 		return
 	}
-
 	switch cmd.RespType {
 	case STATUS:
 		resp = &_response{msg: string(buf[1:])}
@@ -251,7 +253,7 @@ func GetResponse(reader *bufio.Reader, cmd *Command) (resp Response, err Error) 
 		assertCtlByte(buf, count_byte, "MULTI_BULK")
 		cnt, e := strconv.Atoi(string(buf[1:]))
 		assertNotError(e, "in GetResponse - parse error in MULTIBULK cnt")
-		resp = &_response{multibulkdata: readMultiBulkData(reader, cnt)}
+        resp = &_response{multibulkdata: readMultiBulkData2(reader,cnt)}
 		return
 	}
 
@@ -440,8 +442,9 @@ func readBulkData(r *bufio.Reader, n int) (data []byte) {
 // The initial *num\r\n is assumed to have been consumed.
 //
 // panics on errors (with redis.Error)
-func readMultiBulkData(conn *bufio.Reader, num int) [][]byte {
+func readMultiBulkData(conn *bufio.Reader, num int) [][]byte{
 	data := make([][]byte, num)
+
 	for i := 0; i < num; i++ {
 		buf := readToCRLF(conn)
 		if buf[0] != size_byte {
@@ -454,5 +457,49 @@ func readMultiBulkData(conn *bufio.Reader, num int) [][]byte {
 		}
 		data[i] = readBulkData(conn, size)
 	}
+    for _,i := range data{
+        fmt.Println(i,string(i))
+    }
 	return data
+}
+
+// Reads a multibulk response of given expected elements.
+// The initial *num\r\n is assumed to have been consumed.
+// multibulk can be nested.
+// panics on errors (with redis.Error)
+func readMultiBulkData2(conn *bufio.Reader, num int) interface{}{
+    line := readToCRLF(conn)
+
+	if len(line) == 0 {
+		return nil
+	}
+	switch line[0] {
+	case '+':
+		return string(line[1:])
+	case '-':
+		return string(line[1:])
+	case ':':
+		n, err := strconv.ParseInt(string(line[1:]), 10, 64)
+		if err != nil {
+			return nil
+		}
+		return n
+	case '$':
+		n, err := strconv.Atoi(string(line[1:]))
+		if err != nil || n < 0 {
+			return nil
+		}
+        return readBulkData(conn,n)
+	case '*':
+		n, err := strconv.Atoi(string(line[1:]))
+		if err != nil || n < 0 {
+			return nil
+		}
+		r := make([]interface{}, n)
+		for i := range r {
+			r[i] = readMultiBulkData2(conn,n)
+		}
+		return r
+	}
+	return nil
 }

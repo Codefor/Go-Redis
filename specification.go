@@ -119,6 +119,8 @@ type Command struct {
 //
 var (
 	AUTH          Command = Command{"AUTH", KEY, STATUS}
+	SENTINEL      Command = Command{"SENTINEL", MULTI_KEY, MULTI_BULK}
+	MASTERS       Command = Command{"masters", NO_ARG, BULK}
 	PING          Command = Command{"PING", NO_ARG, STATUS}
 	QUIT          Command = Command{"QUIT", NO_ARG, VIRTUAL}
 	SET           Command = Command{"SET", KEY_VALUE, STATUS}

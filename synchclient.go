@@ -124,10 +124,13 @@ func (c *syncClient) Keys(arg0 string) (result []string, err Error) {
 	if err == nil {
 		//		result = strings.Split(bytes.NewBuffer(resp.GetBulkData()).String(), " ", 0);
 		res := resp.GetMultiBulkData()
-		result = make([]string, len(res))
-		for i, key_bytes := range res {
-			result[i] = string(key_bytes)
-		}
+        if r,ok := res.([][]byte);ok{
+		    result = make([]string, len(r))
+
+            for i, key_bytes := range r {
+                result[i] = string(key_bytes)
+            }
+        }
 	}
 	return result, err
 
@@ -246,7 +249,8 @@ func (c *syncClient) Mget(arg0 string, arg1 []string) (result [][]byte, err Erro
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&MGET, args)
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
+
 	}
 	return result, err
 }
@@ -446,7 +450,7 @@ func (c *syncClient) Lrange(arg0 string, arg1 int64, arg2 int64) (result [][]byt
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&LRANGE, [][]byte{arg0bytes, arg1bytes, arg2bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -497,7 +501,7 @@ func (c *syncClient) Blpop(arg0 string, timeout int) (result [][]byte, err Error
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&BLPOP, [][]byte{arg0bytes, arg1bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -524,7 +528,7 @@ func (c *syncClient) Brpop(arg0 string, timeout int) (result [][]byte, err Error
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&BRPOP, [][]byte{arg0bytes, arg1bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -553,7 +557,7 @@ func (c *syncClient) Brpoplpush(arg0 string, arg1 string, timeout int) (result [
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&BRPOPLPUSH, [][]byte{arg0bytes, arg1bytes, arg2bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -663,7 +667,7 @@ func (c *syncClient) Sinter(arg0 string, arg1 []string) (result [][]byte, err Er
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&SINTER, appendAndConvert(arg0, arg1...))
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -681,7 +685,7 @@ func (c *syncClient) Sunion(arg0 string, arg1 []string) (result [][]byte, err Er
 	//		resp, err = c.conn.ServiceRequest(&SUNION, [][]byte{arg0bytes, arg1bytes})
 	resp, err = c.conn.ServiceRequest(&SUNION, appendAndConvert(arg0, arg1...))
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -698,7 +702,7 @@ func (c *syncClient) Sdiff(arg0 string, arg1 []string) (result [][]byte, err Err
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&SDIFF, appendAndConvert(arg0, arg1...))
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -717,7 +721,7 @@ func (c *syncClient) Smembers(arg0 string) (result [][]byte, err Error) {
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&SMEMBERS, [][]byte{arg0bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -815,7 +819,7 @@ func (c *syncClient) Zrange(arg0 string, arg1 int64, arg2 int64) (result [][]byt
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&ZRANGE, [][]byte{arg0bytes, arg1bytes, arg2bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -830,7 +834,7 @@ func (c *syncClient) Zrevrange(arg0 string, arg1 int64, arg2 int64) (result [][]
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&ZREVRANGE, [][]byte{arg0bytes, arg1bytes, arg2bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -845,7 +849,7 @@ func (c *syncClient) Zrangebyscore(arg0 string, arg1 float64, arg2 float64) (res
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&ZRANGEBYSCORE, [][]byte{arg0bytes, arg1bytes, arg2bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 
@@ -882,7 +886,7 @@ func (c *syncClient) Hgetall(arg0 string) (result [][]byte, err Error) {
 	var resp Response
 	resp, err = c.conn.ServiceRequest(&HGETALL, [][]byte{arg0bytes})
 	if err == nil {
-		result = resp.GetMultiBulkData()
+		result = resp.GetMultiBulkData().([][]byte)
 	}
 	return result, err
 

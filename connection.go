@@ -315,6 +315,34 @@ func (hdl *connHdl) disconnect() {
 	}
 }
 
+func (hdl *connHdl) reconnect() {
+	loginfo := "reconnect"
+	var mode, addr string
+    spec := hdl.spec
+	if spec.port == 0 { // REVU - no special values (it was a contrib) TODO add flag to connspec.
+		mode = UNIX
+		addr = hdl.spec.host
+	} else {
+		mode = TCP
+		addr = fmt.Sprintf("%s:%d", spec.host, spec.port)
+		_, e := net.ResolveTCPAddr(TCP, addr)
+		if e != nil {
+			panic(fmt.Errorf("%s(): failed to resolve remote address %s", loginfo, addr))
+		}
+	}
+
+	conn, e := net.Dial(mode, addr)
+	switch {
+        case e != nil:
+            panic(fmt.Errorf("%s(): could not open connection", loginfo))
+        case conn == nil:
+            panic(fmt.Errorf("%s(): net.Dial returned nil, nil (?)", loginfo))
+        default:
+            configureConn(conn, spec)
+            hdl.spec = spec
+            hdl.conn = conn
+    }
+}
 // Creates a new SyncConnection using the provided ConnectionSpec.
 // Note that this function will also connect to the specified redis server.
 func NewSyncConnection(spec *ConnectionSpec) (c SyncConnection, err Error) {
@@ -840,6 +868,10 @@ func heartbeatTask(c *asyncConnHdl, ctl workerCtl) (sig *interrupt_code, te *tas
 			return nil, &taskStatus{error_, re}
 		} else if timedout {
 			log.Println("Warning: Heartbeat timeout on get PING response.")
+            //when there is a warning ,force to reconnect
+			log.Println("when there is a warning ,a reconnect is forced")
+            c.super.reconnect()
+			log.Println("connection has been forecd to reconnected")
 		} else {
 			// flytrap
 			if stat != true {

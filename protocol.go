@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+    "log"
 	"io"
 	"strconv"
 )
@@ -122,7 +123,7 @@ func SetFutureResult(future interface{}, cmd *Command, r Response) {
 		case BULK:
 			future.(FutureBytes).set(r.GetBulkData())
 		case MULTI_BULK:
-            if r,ok := r.GetMultiBulkData().([][]byte);ok{
+            if r,ok := r.GetMultiBulkData().([]interface{});ok{
 			    future.(FutureBytesArray).set(r)
             }
 		case NUMBER:
@@ -196,9 +197,7 @@ func (r *_response) GetBooleanValue() bool  { return r.boolval }
 func (r *_response) GetNumberValue() int64  { return r.numval }
 func (r *_response) GetStringValue() string { return r.stringval }
 func (r *_response) GetBulkData() []byte    { return r.bulkdata }
-func (r *_response) GetMultiBulkData() interface{} {
-	return r.multibulkdata
-}
+func (r *_response) GetMultiBulkData() interface{} { return r.multibulkdata}
 
 // ----------------------------------------------------------------------------
 // response processing
@@ -216,7 +215,6 @@ func GetResponse(reader *bufio.Reader, cmd *Command) (resp Response, err Error) 
 	}()
 
 	buf := readToCRLF(reader)
-
 	// Redis error
 	if buf[0] == err_byte {
 		resp = &_response{msg: string(buf[1:]), isError: true}
@@ -457,49 +455,46 @@ func readMultiBulkData(conn *bufio.Reader, num int) [][]byte{
 		}
 		data[i] = readBulkData(conn, size)
 	}
-    for _,i := range data{
-        fmt.Println(i,string(i))
-    }
 	return data
 }
 
 // Reads a multibulk response of given expected elements.
-// The initial *num\r\n is assumed to have been consumed.
+// The initial *num\r\n is assumed to have been consumed.!!!
 // multibulk can be nested.
 // panics on errors (with redis.Error)
 func readMultiBulkData2(conn *bufio.Reader, num int) interface{}{
-    line := readToCRLF(conn)
+    data := make([]interface{}, num)
+	for i := 0; i < num ; i++ {
+        line := readToCRLF(conn)
 
-	if len(line) == 0 {
-		return nil
-	}
-	switch line[0] {
-	case '+':
-		return string(line[1:])
-	case '-':
-		return string(line[1:])
-	case ':':
-		n, err := strconv.ParseInt(string(line[1:]), 10, 64)
-		if err != nil {
-			return nil
-		}
-		return n
-	case '$':
-		n, err := strconv.Atoi(string(line[1:]))
-		if err != nil || n < 0 {
-			return nil
-		}
-        return readBulkData(conn,n)
-	case '*':
-		n, err := strconv.Atoi(string(line[1:]))
-		if err != nil || n < 0 {
-			return nil
-		}
-		r := make([]interface{}, n)
-		for i := range r {
-			r[i] = readMultiBulkData2(conn,n)
-		}
-		return r
-	}
-	return nil
+        if len(line) == 0 {
+            return nil
+        }
+        switch line[0] {
+            case '+':
+                data[i] = string(line[1:])
+            case '-':
+                data[i] = string(line[1:])
+            case ':':
+                n, err := strconv.ParseInt(string(line[1:]), 10, 64)
+                if err != nil {
+                    return nil
+                }
+                data[i] = n
+            case '$':
+                n, err := strconv.Atoi(string(line[1:]))
+                if err != nil || n < 0 {
+                    return nil
+                }
+                data[i] = readBulkData(conn,n)
+            case '*':
+                n, err := strconv.Atoi(string(line[1:]))
+                if err != nil || n < 0 {
+                    log.Fatal(err)
+                    return nil
+                }
+                data[i] = readMultiBulkData2(conn,n)
+        }
+    }
+	return data
 }

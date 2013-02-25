@@ -138,9 +138,9 @@ func (fvc _byteslicefuture) TryGet(ns time.Duration) ([]byte, Error, bool) {
 //
 type FutureBytesArray interface {
 	//	onError (Error);
-	set([][]byte)
+	set([]interface{})
 	Get() (vale [][]byte, error Error)
-	TryGet(timeoutnano time.Duration) (value [][]byte, error Error, timedout bool)
+	TryGet(timeoutnano time.Duration) (value interface{}, error Error, timedout bool)
 }
 type _bytearrayslicefuture chan result
 
@@ -148,7 +148,7 @@ func newFutureBytesArray() FutureBytesArray { return make(_bytearrayslicefuture,
 func (fvc _bytearrayslicefuture) onError(e Error) {
 	send(fvc, nil, e)
 }
-func (fvc _bytearrayslicefuture) set(v [][]byte) {
+func (fvc _bytearrayslicefuture) set(v []interface{}) {
 	send(fvc, v, nil)
 }
 func (fvc _bytearrayslicefuture) Get() (v [][]byte, error Error) {
@@ -158,12 +158,12 @@ func (fvc _bytearrayslicefuture) Get() (v [][]byte, error Error) {
 	}
 	return gv.([][]byte), err
 }
-func (fvc _bytearrayslicefuture) TryGet(ns time.Duration) ([][]byte, Error, bool) {
+func (fvc _bytearrayslicefuture) TryGet(ns time.Duration) (interface{}, Error, bool) {
 	gv, err, timedout := tryReceive(fvc, ns)
 	if timedout || err != nil {
 		return nil, err, timedout
 	}
-	return gv.([][]byte), err, timedout
+	return gv.(interface{}), err, timedout
 }
 
 // FutureBool

@@ -483,10 +483,15 @@ func readMultiBulkData2(conn *bufio.Reader, num int) interface{}{
                 data[i] = n
             case '$':
                 n, err := strconv.Atoi(string(line[1:]))
-                if err != nil || n < 0 {
+                if err != nil {
                     return nil
                 }
-                data[i] = readBulkData(conn,n)
+
+                if n > 0{
+                    data[i] = readBulkData(conn,n)
+                }else{
+                    data[i] = nil
+                }
             case '*':
                 n, err := strconv.Atoi(string(line[1:]))
                 if err != nil || n < 0 {

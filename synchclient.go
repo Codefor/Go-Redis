@@ -193,9 +193,15 @@ func (c *syncClient) Info() (result map[string]string, err Error) {
 
 func parseInfo(buff []byte) map[string]string {
 	infoStr := bytes.NewBuffer(buff).String()
-	infoItems := strings.SplitN(infoStr, "\r\n", 0)
+	infoItems := strings.SplitN(infoStr, "\r\n", -1)
 	result := make(map[string]string)
 	for _, entry := range infoItems {
+        if entry == ""{
+            continue
+        }
+        if strings.Index(entry,"#") != -1{
+            continue
+        }
 		etuple := strings.SplitN(entry, ":", 2)
 		result[etuple[0]] = etuple[1]
 	}

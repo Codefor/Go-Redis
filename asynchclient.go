@@ -230,7 +230,6 @@ func (c *asyncClient) Mget(arg0 string, arg1 []string) (result FutureBytesArray,
 		result = resp.future.(FutureBytesArray)
 	}
 	return result, err
-
 }
 
 // Redis INCR command.
